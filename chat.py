@@ -79,15 +79,11 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_sessions[user_id].append({"role": "assistant", "content": ai_reply})
 
 # === BOT RUNNER ===
-app = ApplicationBuilder().token(TELEGRAM_TOKEN)
+app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 
-# Add handlers **before building**
-app = (
-    app
-    .add_handler(CommandHandler("start", start))
-    .add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat))
-    .build()
-)
+# Add handlers **after building the app**
+app.add_handler(CommandHandler("start", start))
+app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat))
 
 print("✅ DeepSeek Telegram Bot is running...")
 app.run_polling()
