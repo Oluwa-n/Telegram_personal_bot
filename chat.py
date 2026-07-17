@@ -15,7 +15,7 @@ TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 logging.basicConfig(level=logging.INFO)
 
 # === HUGGING FACE CLIENT ===
-client = InferenceClient("deepseek-ai/DeepSeek-V3.2-Exp", token=HF_TOKEN)
+client = InferenceClient(api_key=HF_TOKEN)
 
 # === PER-USER SESSION STORAGE ===
 user_sessions = {}
@@ -70,7 +70,7 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
         temperature=0.7,
     )
 
-    ai_reply = response.choices[0].message["content"]
+    ai_reply = response.choices[0].message.content
 
     # Send AI response to user
     await update.message.reply_text(ai_reply)
