@@ -5,6 +5,7 @@ from huggingface_hub import InferenceClient
 from telegram import Update
 from telegram.constants import ChatAction
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
+from Spliter import split_message
 
 # === LOAD ENV VARIABLES ===
 load_dotenv()
@@ -22,7 +23,7 @@ user_sessions = {}
 
 # === HANDLERS ===
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("🤖 DeepSeek AI is online! Type anything to chat.")
+    await update.message.reply_text("🔥 Eclipse checking in. Let's get it.")
 
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -72,8 +73,9 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     ai_reply = response.choices[0].message.content
 
-    # Send AI response to user
-    await update.message.reply_text(ai_reply)
+    # Send AI response in chunks if it's too long
+    for part in split_message(ai_reply):
+        await update.message.reply_text(part)
 
     # Add AI reply to session
     user_sessions[user_id].append({"role": "assistant", "content": ai_reply})
@@ -85,5 +87,5 @@ app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 app.add_handler(CommandHandler("start", start))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat))
 
-print("✅ DeepSeek Telegram Bot is running...")
+print("✅ Eclipse Telegram Bot is running...")
 app.run_polling()
