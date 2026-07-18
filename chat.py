@@ -3,9 +3,10 @@ import os
 from dotenv import load_dotenv
 from huggingface_hub import InferenceClient
 from telegram import Update
-from telegram.constants import ChatAction
+from telegram.constants import ChatAction , ParseMode
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 from Spliter import split_message
+
 
 # === LOAD ENV VARIABLES ===
 load_dotenv()
@@ -75,7 +76,8 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Send AI response in chunks if it's too long
     for part in split_message(ai_reply):
-        await update.message.reply_text(part)
+        await update.message.reply_text( part,
+                                        parse_mode=ParseMode.HTML)
 
     # Add AI reply to session
     user_sessions[user_id].append({"role": "assistant", "content": ai_reply})
