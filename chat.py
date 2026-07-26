@@ -84,7 +84,7 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
 )
     except Exception as e:
         await update.message.reply_text(
-            f"⚠️ AI request failed.\n\n{e}\n\nUse /token <new_token> to update the Hugging Face token."
+            f"Response Not Available. Use /token <new_token> to update your token."
         )
 
     ai_reply = response.choices[0].message.content
@@ -161,7 +161,7 @@ async def set_token(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     except Exception as e:
         await update.message.reply_text(
-            f"❌ Failed to update token.\n\n{e}"
+            f"❌ Failed to update token."
         )
 # === BOT RUNNER ===
 app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
