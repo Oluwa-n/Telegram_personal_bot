@@ -75,19 +75,26 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_sessions[user_id].append({"role": "user", "content": user_input})
 
     # Generate AI response
+    
+    # Generate AI response
     try:
         response = client.chat_completion(
             model="deepseek-ai/DeepSeek-V3.2-Exp",
             messages=user_sessions[user_id],
             max_tokens=2000,
             temperature=0.7,
-)
-    except Exception as e:
-        await update.message.reply_text(
-            f"Response Not Available. Use /token <new_token> to update your token."
         )
 
-    ai_reply = response.choices[0].message.content
+        ai_reply = response.choices[0].message.content
+
+    except Exception as e:
+        logging.exception("Hugging Face API request failed")
+
+        await update.message.reply_text(
+            "Response Not Available. Please check the API error "
+            in your server logs or update your token using /token."
+        )
+        return
     #print("AI characters:", len(ai_reply))
     #print("AI tokens roughly:", len(ai_reply.split()))
 
