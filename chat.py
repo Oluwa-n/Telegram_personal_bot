@@ -93,7 +93,7 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Generate AI response
     try:
         response = client.chat_completion(
-            model="deepseek-ai/DeepSeek-V3.2-Exp",
+            model="deepseek-ai/DeepSeek-V4.1-Flash",
             messages=user_sessions[user_id],
             max_tokens=2000,
             temperature=0.7,
