@@ -173,7 +173,7 @@ async def set_token(
         new_client = InferenceClient(api_key=new_token)
 
         new_client.chat_completion(
-            model="deepseek-ai/DeepSeek-V3.2-Exp",
+            model="Qwen/Qwen3.8-27B",
             messages=[
                 {
                     "role": "user",
