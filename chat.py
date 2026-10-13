@@ -92,7 +92,7 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await update.message.reply_text(
             "Response Not Available. Please check the API error "
-            in your server logs or update your token using /token."
+            "in your server logs or update your token using /token."
         )
         return
     #print("AI characters:", len(ai_reply))
