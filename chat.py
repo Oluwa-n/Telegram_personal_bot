@@ -1,10 +1,17 @@
+
 import logging
 import os
 from dotenv import load_dotenv, set_key
 from huggingface_hub import InferenceClient
 from telegram import Update
-from telegram.constants import ChatAction , ParseMode
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
+from telegram.constants import ChatAction, ParseMode
+from telegram.ext import (
+    ApplicationBuilder,
+    CommandHandler,
+    MessageHandler,
+    filters,
+    ContextTypes,
+)
 from Spliter import split_message
 
 
@@ -18,21 +25,28 @@ TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 client = InferenceClient(api_key=HF_TOKEN)
 
 # === LOGGING ===
-logging.basicConfig(level=logging.INFO)
-
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 # === PER-USER SESSION STORAGE ===
 user_sessions = {}
 
+
 # === HANDLERS ===
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("🔥 Eclipse checking in. Let's get it.")
+    await update.message.reply_text(
+        "🔥 Eclipse checking in. Let's get it."
+    )
+
 
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     user_input = update.message.text
 
-    # Show "typing…" while AI is generating a response
+    # Show typing action
     await update.message.chat.send_action(action=ChatAction.TYPING)
 
     # Initialize session if first message
@@ -72,10 +86,10 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ]
 
     # Add user message to session
-    user_sessions[user_id].append({"role": "user", "content": user_input})
+    user_sessions[user_id].append(
+        {"role": "user", "content": user_input}
+    )
 
-    # Generate AI response
-    
     # Generate AI response
     try:
         response = client.chat_completion(
@@ -87,58 +101,75 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         ai_reply = response.choices[0].message.content
 
-    except Exception as e:
-        logging.exception("Hugging Face API request failed")
+        if not ai_reply:
+            logger.error(
+                "Empty AI response. Telegram user ID: %s",
+                user_id,
+            )
+            await update.message.reply_text(
+                "😕 I couldn't prepare a response right now. Please try again."
+            )
+            return
 
+    except Exception:
+        logger.exception(
+            "AI response generation failed. Telegram user ID: %s",
+            user_id,
+        )
         await update.message.reply_text(
-            "Response Not Available. Please check the API error "
-            "in your server logs or update your token using /token."
+            "⚠️ Something went wrong while preparing your response. Please try again shortly."
         )
         return
-    #print("AI characters:", len(ai_reply))
-    #print("AI tokens roughly:", len(ai_reply.split()))
 
-# Fix common Telegram HTML mistakes
-    ai_reply = ai_reply.replace("<br>", "\n")   
+    # Fix common Telegram HTML mistakes
+    ai_reply = ai_reply.replace("<br>", "\n")
     ai_reply = ai_reply.replace("<br/>", "\n")
 
     # Send AI response in chunks if it's too long
     parts = split_message(ai_reply)
 
-    #print(f"Total chunks: {len(parts)}")
-
-    for i, part in enumerate(parts):
+    for part in parts:
         try:
             await update.message.reply_text(
                 part,
-                parse_mode=ParseMode.HTML
+                parse_mode=ParseMode.HTML,
             )
-            #print(f"Sent chunk {i+1}/{len(parts)}")
-
-        except Exception as e:
-            #print(f"Failed chunk {i+1}: {e}")
-
-            # fallback without HTML
-            await update.message.reply_text(
-                part
+        except Exception:
+            logger.exception(
+                "HTML message delivery failed. Telegram user ID: %s",
+                user_id,
             )
+            try:
+                await update.message.reply_text(part)
+            except Exception:
+                logger.exception(
+                    "Plain-text message delivery failed. Telegram user ID: %s",
+                    user_id,
+                )
 
     # Add AI reply to session
-    user_sessions[user_id].append({"role": "assistant", "content": ai_reply})
+    user_sessions[user_id].append(
+        {"role": "assistant", "content": ai_reply}
+    )
 
-async def set_token(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+async def set_token(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
     global HF_TOKEN, client
 
     if not context.args:
         await update.message.reply_text(
-            "Usage:\n/token hf_xxxxxxxxx"
+            "🔑 Please provide your new token.\n\n"
+            "Usage: /token YOUR_NEW_TOKEN"
         )
         return
 
     new_token = context.args[0].strip()
 
     try:
-        # Test the token
+        # Test the new token using a separate client
         new_client = InferenceClient(api_key=new_token)
 
         new_client.chat_completion(
@@ -146,14 +177,20 @@ async def set_token(update: Update, context: ContextTypes.DEFAULT_TYPE):
             messages=[
                 {
                     "role": "user",
-                    "content": "hello"
+                    "content": "hello",
                 }
             ],
-            max_tokens=5
+            max_tokens=5,
         )
 
         # Save the token to .env
-        set_key(".env", "HF_TOKEN", new_token)
+        env_path = ".env"
+        if not os.path.exists(env_path):
+            logger.warning(
+                ".env file not found at the current working directory."
+            )
+
+        set_key(env_path, "HF_TOKEN", new_token)
 
         # Reload environment
         load_dotenv(override=True)
@@ -162,21 +199,30 @@ async def set_token(update: Update, context: ContextTypes.DEFAULT_TYPE):
         HF_TOKEN = new_token
         client = new_client
 
+        logger.info("API token updated successfully.")
+
         await update.message.reply_text(
-            "✅ Hugging Face token updated successfully!"
+            "✅ Your token has been updated successfully!"
         )
 
-    except Exception as e:
-        await update.message.reply_text(
-            f"❌ Failed to update token."
+    except Exception:
+        logger.exception(
+            "Token validation or update failed."
         )
+        await update.message.reply_text(
+            "❌ The token couldn't be updated. Please check it and try again."
+        )
+
+
 # === BOT RUNNER ===
 app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 
-# Add handlers **after building the app**
+# Add handlers
 app.add_handler(CommandHandler("start", start))
-app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat))
 app.add_handler(CommandHandler("token", set_token))
+app.add_handler(
+    MessageHandler(filters.TEXT & ~filters.COMMAND, chat)
+)
 
-print("✅ Eclipse Telegram Bot is running...")
+logger.info("🔥 Eclipse Telegram Bot is starting...")
 app.run_polling()
